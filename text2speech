@@ -1,0 +1,44 @@
+#!/bin/bash
+## Wavenet speech
+
+mkdir temp
+cp $1 temp/$1
+cd temp
+split $1 -b 1000
+cd ../
+rm temp/$1
+
+
+for f in temp/*;do
+file=$(cat $f)
+
+# count
+count=$((count+1))
+
+curl -H "Authorization: Bearer "$(gcloud auth application-default print-access-token) \
+  -H "Content-Type: application/json; charset=utf-8" \
+  --data "{
+    'input':{
+      'text':'$file'
+    },
+    'voice':{
+      'languageCode':'en-gb',
+      'name':'en-GB-Standard-D',
+      'ssmlGender':'MALE'
+    },
+    'audioConfig':{
+      'audioEncoding':'MP3'
+    }
+  }" "https://texttospeech.googleapis.com/v1/text:synthesize" > temp/synthesize-text.txt
+
+## Cut out relevant data from resopnse
+awk -F\" '{print $4}'  temp/synthesize-text.txt > temp/audio.txt
+
+## Decode base64 to mp3
+base64 temp/audio.txt --decode > $1-$count.mp3
+
+#rm audio.txt
+#rm synthesize-text.txt
+#rm mydata.json
+#rm -R temp
+done
